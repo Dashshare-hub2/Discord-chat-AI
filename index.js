@@ -49,7 +49,14 @@ async function queryPuterAI(prompt) {
         }
 
         const data = await response.json();
-        return data.message?.content || data.response?.text || data.reply || "Không có câu trả lời.";
+        
+        if (data.response && data.response.text) {
+            return data.response.text;
+        } else if (data.message && data.message.content) {
+            return data.message.content;
+        }
+        
+        return "Không lấy được cấu trúc văn bản từ AI.";
     } catch (err) {
         clearTimeout(timeoutId);
         if (err.name === 'AbortError') {
