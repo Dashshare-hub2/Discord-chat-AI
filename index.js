@@ -1,22 +1,15 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 const http = require('http');
 
-// --------------------------------------------------
-// 1. KHỞI TẠO HTTP SERVER (HEALTH CHECK RENDER)
-// --------------------------------------------------
 const PORT = process.env.PORT || 10000;
 const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
     res.end('Bot Discord Puter AI đang chạy trên Render! 🚀');
 });
-
 server.listen(PORT, () => {
     console.log(`🌐 HTTP Server phục vụ Health Check đã mở tại cổng ${PORT}`);
 });
 
-// --------------------------------------------------
-// 2. KHỞI TẠO BOT DISCORD
-// --------------------------------------------------
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -26,11 +19,8 @@ const client = new Client({
 });
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
-const PUTER_AUTH_TOKEN = process.env.PUTER_AUTH_TOKEN; 
+const PUTER_AUTH_TOKEN = process.env.PUTER_AUTH_TOKEN;
 
-// --------------------------------------------------
-// 3. LOGIC GỌI PUTER AI API (CÓ AUTHENTICATION)
-// --------------------------------------------------
 async function queryPuterAI(prompt) {
     if (!PUTER_AUTH_TOKEN) {
         throw new Error("Thiếu biến môi trường PUTER_AUTH_TOKEN!");
@@ -44,7 +34,7 @@ async function queryPuterAI(prompt) {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${PUTER_AUTH_TOKEN}` // Gửi kèm token để tránh bị chặn
+                'Authorization': `Bearer ${PUTER_AUTH_TOKEN}`
             },
             body: JSON.stringify({
                 messages: [{ role: 'user', content: prompt }]
@@ -69,27 +59,21 @@ async function queryPuterAI(prompt) {
     }
 }
 
-// --------------------------------------------------
-// 4. XỬ LÝ SỰ KIỆN BOT
-// --------------------------------------------------
 client.once('ready', () => {
     console.log(`🤖 SUCCESS! Bot đã chính thức ONLINE trên Render với tên: ${client.user.username}`);
 });
 
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
-
-    const botName = client.user.username;
-    const contentText = message.content.trim();
-
-    if (!contentText.toLowerCase().startsWith(`@${botName.toLowerCase()}`)) return;
+    if (!message.mentions.has(client.user)) return;
 
     try {
         await message.channel.sendTyping();
-        const prompt = contentText.substring(`@${botName}`.length).trim();
+        const mentionRegex = new RegExp(`<@!?${client.user.id}>`);
+        const prompt = message.content.replace(mentionRegex, '').trim();
 
         if (!prompt) {
-            return message.channel.send(`<@${message.author.id}> Bạn cần nhập tin nhắn sau tên bot nhé!`);
+            return message.channel.send(`<@${message.author.id}> Bạn cần nhập tin nhắn sau khi tag tôi nhé! Ví dụ: \`@${client.user.username} Xin chào\``);
         }
 
         const aiResponse = await queryPuterAI(prompt);
@@ -97,7 +81,7 @@ client.on('messageCreate', async (message) => {
 
     } catch (error) {
         console.error("Lỗi xử lý tin nhắn:", error.message);
-        await message.channel.send(`<@${message.author.id}> Gặp sự cố kết nối AI: ${error.message}`);
+        await message.channel.send(`<@${message.author.id}> Gặp sự cố khi kết nối với AI. Thử lại sau nhé!`);
     }
 });
 
