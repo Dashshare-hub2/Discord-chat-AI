@@ -1,7 +1,7 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 const http = require('http');
 
-
+// 1. KHỞI TẠO HTTP SERVER (HEALTH CHECK RENDER)
 const PORT = process.env.PORT || 10000;
 const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
@@ -11,7 +11,7 @@ server.listen(PORT, () => {
     console.log(`🌐 HTTP Server phục vụ Health Check đã mở tại cổng ${PORT}`);
 });
 
-
+// 2. KHỞI TẠO BOT DISCORD
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -21,9 +21,9 @@ const client = new Client({
 });
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
-const PUTER_AUTH_TOKEN = process.env.PUTER_AUTH_TOKEN; 
+const PUTER_AUTH_TOKEN = process.env.PUTER_AUTH_TOKEN; // Đây sẽ là OpenRouter API Key của bạn
 
-
+// 3. LOGIC GỌI AI VIA OPENROUTER (DÙNG GEMMA MIỄN PHÍ)
 async function queryPuterAI(prompt) {
     if (!PUTER_AUTH_TOKEN) {
         throw new Error("Thiếu biến môi trường PUTER_AUTH_TOKEN (OpenRouter API Key)!");
@@ -33,6 +33,7 @@ async function queryPuterAI(prompt) {
     const timeoutId = setTimeout(() => controller.abort(), 20000);
 
     try {
+        // Chuyển sang endpoint của OpenRouter để dùng model miễn phí tùy chọn
         const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
             headers: { 
@@ -40,7 +41,7 @@ async function queryPuterAI(prompt) {
                 'Authorization': `Bearer ${PUTER_AUTH_TOKEN}`
             },
             body: JSON.stringify({
-                model: 'google/gemma-3n-e2b-it:free', 
+                model: 'google/gemma-3n-e2b-it:free', // Model miễn phí bạn yêu cầu
                 messages: [{ role: 'user', content: prompt }]
             }),
             signal: controller.signal
@@ -70,6 +71,7 @@ async function queryPuterAI(prompt) {
     }
 }
 
+// 4. XỬ LÝ SỰ KIỆN BOT LẮNG NGHE
 client.once('ready', () => {
     console.log(`🤖 SUCCESS! Bot đã chính thức ONLINE trên Render với tên: ${client.user.username}`);
 });
