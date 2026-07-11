@@ -41,7 +41,7 @@ async function queryPuterAI(prompt) {
                 'Authorization': `Bearer ${PUTER_AUTH_TOKEN}`
             },
             body: JSON.stringify({
-                model: 'google/gemma-3n-e2b-it:free', // Model miễn phí bạn yêu cầu
+                model: 'google/gemini-flash-lite-1.5-flash:free', // Model miễn phí bạn yêu cầu
                 messages: [{ role: 'user', content: prompt }]
             }),
             signal: controller.signal
