@@ -1,14 +1,16 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 const http = require('http');
 
+
 const PORT = process.env.PORT || 10000;
 const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
-    res.end('Bot Discord Puter AI đang chạy trên Render! 🚀');
+    res.end('Bot Discord AI đang chạy trên Render! 🚀');
 });
 server.listen(PORT, () => {
     console.log(`🌐 HTTP Server phục vụ Health Check đã mở tại cổng ${PORT}`);
 });
+
 
 const client = new Client({
     intents: [
@@ -19,24 +21,26 @@ const client = new Client({
 });
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
-const PUTER_AUTH_TOKEN = process.env.PUTER_AUTH_TOKEN;
+const PUTER_AUTH_TOKEN = process.env.PUTER_AUTH_TOKEN; 
+
 
 async function queryPuterAI(prompt) {
     if (!PUTER_AUTH_TOKEN) {
-        throw new Error("Thiếu biến môi trường PUTER_AUTH_TOKEN!");
+        throw new Error("Thiếu biến môi trường PUTER_AUTH_TOKEN (OpenRouter API Key)!");
     }
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 20000);
 
     try {
-        const response = await fetch('https://api.puter.com/v1/ai/chat', {
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${PUTER_AUTH_TOKEN}`
             },
             body: JSON.stringify({
+                model: 'google/gemma-3n-e2b-it:free', 
                 messages: [{ role: 'user', content: prompt }]
             }),
             signal: controller.signal
@@ -45,22 +49,22 @@ async function queryPuterAI(prompt) {
         clearTimeout(timeoutId);
 
         if (!response.ok) {
-            throw new Error(`Puter API Error: ${response.status} ${response.statusText}`);
+            const errorText = await response.text();
+            throw new Error(`AI API Error: ${response.status} - ${errorText}`);
         }
 
         const data = await response.json();
         
-        if (data.response && data.response.text) {
-            return data.response.text;
-        } else if (data.message && data.message.content) {
-            return data.message.content;
+        // Cấu trúc bóc tách chuẩn theo OpenAI/OpenRouter format
+        if (data.choices && data.choices[0] && data.choices[0].message) {
+            return data.choices[0].message.content;
         }
         
         return "Không lấy được cấu trúc văn bản từ AI.";
     } catch (err) {
         clearTimeout(timeoutId);
         if (err.name === 'AbortError') {
-            throw new Error("Kết nối tới Puter AI bị quá hạn.");
+            throw new Error("Kết nối tới AI bị quá hạn (Timeout).");
         }
         throw err;
     }
@@ -76,11 +80,12 @@ client.on('messageCreate', async (message) => {
 
     try {
         await message.channel.sendTyping();
+
         const mentionRegex = new RegExp(`<@!?${client.user.id}>`);
         const prompt = message.content.replace(mentionRegex, '').trim();
 
         if (!prompt) {
-            return message.channel.send(`<@${message.author.id}> Bạn cần nhập tin nhắn sau khi tag tôi nhé! Ví dụ: \`@${client.user.username} Xin chào\``);
+            return message.channel.send(`<@${message.author.id}> Bạn cần nhập tin nhắn sau khi tag tôi nhé!`);
         }
 
         const aiResponse = await queryPuterAI(prompt);
@@ -88,7 +93,7 @@ client.on('messageCreate', async (message) => {
 
     } catch (error) {
         console.error("Lỗi xử lý tin nhắn:", error.message);
-        await message.channel.send(`<@${message.author.id}> Gặp sự cố khi kết nối với AI. Thử lại sau nhé!`);
+        await message.channel.send(`<@${message.author.id}> Gặp sự cố kết nối AI: \`${error.message}\``);
     }
 });
 
