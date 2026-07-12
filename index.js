@@ -1,17 +1,15 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 const http = require('http');
 
-// 1. KHỞI TẠO HTTP SERVER (HEALTH CHECK RENDER)
 const PORT = process.env.PORT || 10000;
 const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
     res.end('Bot Discord AI đang chạy trên Render! 🚀');
 });
 server.listen(PORT, () => {
-    console.log(`🌐 HTTP Server phục vụ Health Check đã mở tại cổng ${PORT}`);
+    console.log(`🌐 Bot is ready ${PORT}`);
 });
 
-// 2. KHỞI TẠO BOT DISCORD
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -21,19 +19,18 @@ const client = new Client({
 });
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
-const PUTER_AUTH_TOKEN = process.env.PUTER_AUTH_TOKEN; // Đây sẽ là OpenRouter API Key của bạn
+const PUTER_AUTH_TOKEN = process.env.PUTER_AUTH_TOKEN; 
 
-// 3. LOGIC GỌI AI VIA OPENROUTER (DÙNG GEMMA MIỄN PHÍ)
+
 async function queryPuterAI(prompt) {
     if (!PUTER_AUTH_TOKEN) {
-        throw new Error("Thiếu biến môi trường PUTER_AUTH_TOKEN (OpenRouter API Key)!");
+        throw new Error("Missing auth token!");
     }
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 20000);
 
     try {
-        // Chuyển sang endpoint của OpenRouter để dùng model miễn phí tùy chọn
         const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
             headers: { 
@@ -41,7 +38,7 @@ async function queryPuterAI(prompt) {
                 'Authorization': `Bearer ${PUTER_AUTH_TOKEN}`
             },
             body: JSON.stringify({
-                model: 'google/gemini-2.5-flash-lite', // Model miễn phí bạn yêu cầu
+                model: 'google/gemini-2.5-flash-lite',
                 messages: [{ role: 'user', content: prompt }]
             }),
             signal: controller.signal
@@ -56,24 +53,23 @@ async function queryPuterAI(prompt) {
 
         const data = await response.json();
         
-        // Cấu trúc bóc tách chuẩn theo OpenAI/OpenRouter format
+ 
         if (data.choices && data.choices[0] && data.choices[0].message) {
             return data.choices[0].message.content;
         }
         
-        return "Không lấy được cấu trúc văn bản từ AI.";
+        return "Don't get the text from AI.";
     } catch (err) {
         clearTimeout(timeoutId);
         if (err.name === 'AbortError') {
-            throw new Error("Kết nối tới AI bị quá hạn (Timeout).");
+            throw new Error("AI Timeout.");
         }
         throw err;
     }
 }
 
-// 4. XỬ LÝ SỰ KIỆN BOT LẮNG NGHE
 client.once('ready', () => {
-    console.log(`🤖 SUCCESS! Bot đã chính thức ONLINE trên Render với tên: ${client.user.username}`);
+    console.log(`🤖 SUCCESS! Bot Online with name: ${client.user.username}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -87,7 +83,7 @@ client.on('messageCreate', async (message) => {
         const prompt = message.content.replace(mentionRegex, '').trim();
 
         if (!prompt) {
-            return message.channel.send(`<@${message.author.id}> Bạn cần nhập tin nhắn sau khi tag tôi nhé!`);
+            return message.channel.send(`<@${message.author.id}> You must tag me after question!`);
         }
 
         const aiResponse = await queryPuterAI(prompt);
@@ -95,7 +91,7 @@ client.on('messageCreate', async (message) => {
 
     } catch (error) {
         console.error("Lỗi xử lý tin nhắn:", error.message);
-        await message.channel.send(`<@${message.author.id}> Gặp sự cố kết nối AI: \`${error.message}\``);
+        await message.channel.send(`<@${message.author.id}> Error: \`${error.message}\``);
     }
 });
 
