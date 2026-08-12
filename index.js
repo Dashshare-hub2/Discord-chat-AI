@@ -1,3 +1,6 @@
+import { GoogleGenAI } from '@google/genai';
+
+const ai = new GoogleGenAI();
 const { Client, GatewayIntentBits } = require('discord.js');
 const http = require('http');
 
@@ -31,18 +34,10 @@ async function queryPuterAI(prompt) {
     const timeoutId = setTimeout(() => controller.abort(), 20000);
 
     try {
-        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${PUTER_AUTH_TOKEN}`
-            },
-            body: JSON.stringify({
-                model: 'google/gemini-2.5-flash-lite',
-                messages: [{ role: 'user', content: prompt }]
-            }),
-            signal: controller.signal
-        });
+        const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: prompt,
+  });
 
         clearTimeout(timeoutId);
 
@@ -50,13 +45,11 @@ async function queryPuterAI(prompt) {
             const errorText = await response.text();
             throw new Error(`AI API Error: ${response.status} - ${errorText}`);
         }
-
-        const data = await response.json();
         
  
-        if (data.choices && data.choices[0] && data.choices[0].message) {
-            return data.choices[0].message.content;
-        }
+        if (response.text) {
+            return response.text
+            }
         
         return "Don't get the text from AI.";
     } catch (err) {
