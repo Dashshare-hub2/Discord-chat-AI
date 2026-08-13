@@ -1,6 +1,6 @@
 const { GoogleGenAI } = require('@google/genai');
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_KEY });
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, ActivityType } = require('discord.js');
 const http = require('http');
 
 const PORT = process.env.PORT || 10000;
@@ -21,6 +21,9 @@ const client = new Client({
         GatewayIntentBits.MessageContent
     ]
 });
+
+let overloadTimer = null;
+let currentCountdown = 0;
 
 function splitMessage(text, maxLength = 1900) {
     const chunks = [];
@@ -43,10 +46,43 @@ function cleanResponseText(text) {
     return text.replace(/\$/g, '`');
 }
 
+function handleRateLimit(error) {
+    let retrySeconds = 60; 
+
+    if (error.status === 429 || (error.message && error.message.includes('429'))) {
+        const match = error.message && error.message.match(/retry(?:after|delay)?[:\s]+(\d+)/i);
+        if (match && match[1]) {
+            retrySeconds = parseInt(match[1], 10);
+        }
+    }
+
+    startOverloadCountdown(retrySeconds);
+}
+
+function startOverloadCountdown(seconds) {
+    if (overloadTimer) clearInterval(overloadTimer);
+    currentCountdown = seconds;
+
+    const updateStatus = () => {
+        if (currentCountdown > 0) {
+            client.user.setActivity(`overload, retry after ${currentCountdown}s`, { type: ActivityType.Custom });
+            currentCountdown--;
+        } else {
+            clearInterval(overloadTimer);
+            overloadTimer = null;
+            client.user.setPresence({ activities: [], status: 'online' });
+            console.log('Overload period ended. Bot presence reset.');
+        }
+    };
+
+    updateStatus();
+    overloadTimer = setInterval(updateStatus, 1000);
+}
+
 async function queryAI(prompt) {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-3.6-flash',
+            model: 'gemini-2.5-flash',
             contents: prompt,
             config: {
                 systemInstruction: "Do not use LaTeX or dollar signs ($) for formatting math formulas. Use backticks (`) for inline code/math formulas instead."
@@ -57,6 +93,11 @@ async function queryAI(prompt) {
         return cleanResponseText(rawText);
     } catch (err) {
         console.error("Gemini API Error:", err);
+        
+        if (err.status === 429 || (err.message && (err.message.includes('429') || err.message.includes('RESOURCE_EXHAUSTED')))) {
+            handleRateLimit(err);
+        }
+        
         throw new Error(`Gemini Request Failed: ${err.message}`);
     }
 }
