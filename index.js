@@ -12,19 +12,22 @@ const server = http.createServer((req, res) => {
 });
 server.listen(PORT);
 
+const font = PImage.registerFont('', 'Sans');
+font.loadSync();
+
 const client = new Client({
     intents: [
-        GatewayIntentBitsGuilds,
-        GatewayIntentBitsGuildMessages,
-        GatewayIntentBitsMessageContent
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent
     ]
 });
 
-
 function splitMessage(text, maxLength = 1900) {
-    const chunks = ""; 
+    const chunks = []; 
     let currentChunk = "";
     const lines = text.split("\n");
+    
     for (const line of lines) {
         if ((currentChunk + line).length > maxLength) {
             chunks.push(currentChunk.trim());
@@ -44,11 +47,13 @@ async function drawTableToImage(rawText) {
 
     if (tableData.length === 0) return null;
 
-    // FIXED: Added predefined column widths
-    const colWidths =; 
+    const maxCols = Math.max(...tableData.map(row => row.length));
+    const cellWidth = 150;
+    const colWidths = Array(maxCols).fill(cellWidth);
+    
     const cellPadding = 15;
     const lineHeight = 25;
-    const tableWidth = colWidths.reduce((a, b) => a + b, 0);
+    const tableWidth = maxCols * cellWidth;
     const tableHeight = tableData.length * (lineHeight + cellPadding * 2);
 
     const canvas = PImage.make(tableWidth + 40, tableHeight + 40);
@@ -60,27 +65,31 @@ async function drawTableToImage(rawText) {
     ctx.lineWidth = 1;
 
     let currentY = 20;
-    tableData.forEach((row, rIdx) => {
+    tableData.forEach((row) => {
         let currentX = 20;
         row.forEach((cell, cIdx) => {
-            // Basic drawing logic for rows/cols
-            ctx.strokeRect(currentX, currentY, colWidths[cIdx], lineHeight + cellPadding * 2);
+            const width = colWidths[cIdx] || cellWidth;
+            ctx.strokeRect(currentX, currentY, width, lineHeight + cellPadding * 2);
             ctx.fillStyle = '#000000';
+            ctx.setFont('Sans', 14);
             ctx.fillText(String(cell || ""), currentX + cellPadding, currentY + cellPadding + 15);
-            currentX += colWidths[cIdx];
+            currentX += width;
         });
         currentY += lineHeight + cellPadding * 2;
     });
 
     const passThrough = new stream.PassThrough();
     await PImage.encodePNGToStream(canvas, passThrough);
-    const buffers =;
+    const buffers = [];
     for await (const chunk of passThrough) buffers.push(chunk);
     return Buffer.concat(buffers);
 }
 
 async function queryAI(prompt) {
-    const response = await ai.models.generateContent({ model: 'gemini-3.6-flash', contents: prompt });
+    const response = await ai.models.generateContent({ 
+        model: 'gemini-2.5-flash', 
+        contents: prompt 
+    });
     return response.text;
 }
 
@@ -94,7 +103,7 @@ client.on('messageCreate', async (msg) => {
         if (aiText.includes('|')) {
             const img = await drawTableToImage(aiText);
             if (img) {
-                return msg.reply({ files: [new AttachmentBuilder(img, { name: 'tablepng' })] });
+                return msg.reply({ files: [new AttachmentBuilder(img, { name: 'table.png' })] });
             }
         }
 
