@@ -101,7 +101,7 @@ function drawTableToImage(rawText) {
     ctx.strokeStyle = '#000000';
     ctx.lineWidth = 1.5;
     ctx.fillStyle = '#000000';
-    ctx.font = '14px Arial';
+    ctx.font = '14px sans-serif';
 
     let currentY = 20;
 
@@ -119,10 +119,10 @@ function drawTableToImage(rawText) {
                 ctx.fillStyle = '#F2F2F2';
                 ctx.fillRect(currentX + 1, currentY + 1, cWidth - 2, rHeight - 2);
                 ctx.fillStyle = '#000000';
-                ctx.font = 'bold 14px Arial';
+                ctx.font = 'bold 14px sans-serif';
             } else {
                 ctx.fillStyle = '#000000';
-                ctx.font = '14px Arial';
+                ctx.font = '14px sans-serif';
             }
 
             const cleanCell = cell.replace(/<br\s*\/?>/gi, '\n');
@@ -170,7 +170,7 @@ async function queryPuterAI(prompt) {
         });
         let rawText = response.text;
         if (rawText) {
-            rawText = rawText.replace(/\$$([^\$]+)\$\$/g, '```math\n\$1\n```');
+            rawText = rawText.replace(/\$\$([^\$]+)\$\$/g, '```math\n\$1\n```');
             rawText = rawText.replace(/\$([^\$]+)\$/g, '`$1`');
             return rawText;
         }
