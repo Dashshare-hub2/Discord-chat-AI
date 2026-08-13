@@ -52,7 +52,8 @@ function drawTableToImage(rawText) {
 
     const cellPadding = 15;
     const lineHeight = 24;
-    const colWidths =;
+    
+    const colWidths = [180, 250, 250];
     const tableWidth = colWidths.reduce((a, b) => a + b, 0);
     
     const rowHeights = tableData.map(row => {
