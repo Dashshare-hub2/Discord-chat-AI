@@ -4,16 +4,30 @@ const { Client, GatewayIntentBits, AttachmentBuilder } = require('discord.js');
 const http = require('http');
 const PImage = require('pureimage');
 const stream = require('stream');
+const fs = require('fs');
+const path = require('path');
 
 const PORT = process.env.PORT || 10000;
 const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
-    res.end('Discord AI Bot is running! 🚀');
+    res.end('Discord AI Bot is running on Render! 🚀');
 });
-server.listen(PORT);
 
-const font = PImage.registerFont('', 'Sans');
-font.loadSync();
+server.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server is live and listening on port ${PORT}`);
+});
+
+let fontLoaded = false;
+try {
+    const fontPath = path.join(__dirname, 'font.ttf');
+    if (fs.existsSync(fontPath)) {
+        const font = PImage.registerFont(fontPath, 'CustomFont');
+        font.loadSync();
+        fontLoaded = true;
+    }
+} catch (err) {
+    console.warn("Font loading skipped or failed:", err.message);
+}
 
 const client = new Client({
     intents: [
@@ -24,10 +38,9 @@ const client = new Client({
 });
 
 function splitMessage(text, maxLength = 1900) {
-    const chunks = []; 
+    const chunks = [];
     let currentChunk = "";
     const lines = text.split("\n");
-    
     for (const line of lines) {
         if ((currentChunk + line).length > maxLength) {
             chunks.push(currentChunk.trim());
@@ -48,9 +61,7 @@ async function drawTableToImage(rawText) {
     if (tableData.length === 0) return null;
 
     const maxCols = Math.max(...tableData.map(row => row.length));
-    const cellWidth = 150;
-    const colWidths = Array(maxCols).fill(cellWidth);
-    
+    const cellWidth = 160;
     const cellPadding = 15;
     const lineHeight = 25;
     const tableWidth = maxCols * cellWidth;
@@ -67,13 +78,12 @@ async function drawTableToImage(rawText) {
     let currentY = 20;
     tableData.forEach((row) => {
         let currentX = 20;
-        row.forEach((cell, cIdx) => {
-            const width = colWidths[cIdx] || cellWidth;
-            ctx.strokeRect(currentX, currentY, width, lineHeight + cellPadding * 2);
+        row.forEach((cell) => {
+            ctx.strokeRect(currentX, currentY, cellWidth, lineHeight + cellPadding * 2);
             ctx.fillStyle = '#000000';
-            ctx.setFont('Sans', 14);
+            if (fontLoaded) ctx.setFont('CustomFont', 14);
             ctx.fillText(String(cell || ""), currentX + cellPadding, currentY + cellPadding + 15);
-            currentX += width;
+            currentX += cellWidth;
         });
         currentY += lineHeight + cellPadding * 2;
     });
