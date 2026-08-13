@@ -6,28 +6,57 @@ const PImage = require('pureimage');
 const stream = require('stream');
 const fs = require('fs');
 const path = require('path');
+const https = require('https');
 
 const PORT = process.env.PORT || 10000;
+const FONT_PATH = path.join(__dirname, 'Roboto-Regular.ttf');
+const FONT_URL = 'https://github.com/google/fonts/raw/main/ofl/roboto/Roboto-Regular.ttf';
+
 const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
     res.end('Discord AI Bot is running on Render! 🚀');
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server is live and listening on port ${PORT}`);
+    console.log(`Server is listening on port ${PORT}`);
 });
 
-let fontLoaded = false;
-try {
-    const fontPath = path.join(__dirname, 'font.ttf');
-    if (fs.existsSync(fontPath)) {
-        const font = PImage.registerFont(fontPath, 'CustomFont');
-        font.loadSync();
-        fontLoaded = true;
-    }
-} catch (err) {
-    console.warn("Font loading skipped or failed:", err.message);
+function downloadFont(url, dest) {
+    return new Promise((resolve, reject) => {
+        if (fs.existsSync(dest)) return resolve();
+        console.log('Downloading font for PureImage...');
+        const file = fs.createWriteStream(dest);
+        https.get(url, (response) => {
+            if (response.statusCode === 302 || response.statusCode === 301) {
+                return downloadFont(response.headers.location, dest).then(resolve).catch(reject);
+            }
+            response.pipe(file);
+            file.on('finish', () => {
+                file.close(() => {
+                    console.log('Font downloaded successfully.');
+                    resolve();
+                });
+            });
+        }).on('error', (err) => {
+            fs.unlink(dest, () => {});
+            reject(err);
+        });
+    });
 }
+
+let isFontLoaded = false;
+async function initFont() {
+    try {
+        await downloadFont(FONT_URL, FONT_PATH);
+        const font = PImage.registerFont(FONT_PATH, 'CustomFont');
+        font.loadSync();
+        isFontLoaded = true;
+        console.log('Font loaded into PureImage.');
+    } catch (err) {
+        console.error('Failed to initialize font:', err.message);
+    }
+}
+initFont();
 
 const client = new Client({
     intents: [
@@ -61,10 +90,20 @@ async function drawTableToImage(rawText) {
     if (tableData.length === 0) return null;
 
     const maxCols = Math.max(...tableData.map(row => row.length));
-    const cellWidth = 160;
-    const cellPadding = 15;
-    const lineHeight = 25;
-    const tableWidth = maxCols * cellWidth;
+    const colWidths = Array(maxCols).fill(120);
+    
+    tableData.forEach(row => {
+        row.forEach((cell, i) => {
+            const calculatedWidth = (cell.length * 9) + 30;
+            if (calculatedWidth > colWidths[i]) {
+                colWidths[i] = Math.min(calculatedWidth, 400);
+            }
+        });
+    });
+
+    const cellPadding = 12;
+    const lineHeight = 24;
+    const tableWidth = colWidths.reduce((a, b) => a + b, 0);
     const tableHeight = tableData.length * (lineHeight + cellPadding * 2);
 
     const canvas = PImage.make(tableWidth + 40, tableHeight + 40);
@@ -72,18 +111,31 @@ async function drawTableToImage(rawText) {
 
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 1;
+
+    if (isFontLoaded) {
+        ctx.setFont('CustomFont', 14);
+    }
 
     let currentY = 20;
-    tableData.forEach((row) => {
+    tableData.forEach((row, rowIndex) => {
         let currentX = 20;
-        row.forEach((cell) => {
-            ctx.strokeRect(currentX, currentY, cellWidth, lineHeight + cellPadding * 2);
+
+        if (rowIndex === 0) {
+            ctx.fillStyle = '#EAEAEA';
+            ctx.fillRect(20, currentY, tableWidth, lineHeight + cellPadding * 2);
+        }
+
+        row.forEach((cell, cIdx) => {
+            const colWidth = colWidths[cIdx] || 120;
+
+            ctx.strokeStyle = '#CCCCCC';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(currentX, currentY, colWidth, lineHeight + cellPadding * 2);
+
             ctx.fillStyle = '#000000';
-            if (fontLoaded) ctx.setFont('CustomFont', 14);
-            ctx.fillText(String(cell || ""), currentX + cellPadding, currentY + cellPadding + 15);
-            currentX += cellWidth;
+            ctx.fillText(String(cell || ""), currentX + cellPadding, currentY + cellPadding + 16);
+
+            currentX += colWidth;
         });
         currentY += lineHeight + cellPadding * 2;
     });
@@ -97,7 +149,7 @@ async function drawTableToImage(rawText) {
 
 async function queryAI(prompt) {
     const response = await ai.models.generateContent({ 
-        model: 'gemini-3.5-flash-lite', 
+        model: 'gemini-2.5-flash', 
         contents: prompt 
     });
     return response.text;
