@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "discord.js": "^14.15.3",
-    "@google/genai": "^2.16.0"
+    "@google/genai": "^2.16.0",
+    "canvas": "^3.2.0"
   }
 }
