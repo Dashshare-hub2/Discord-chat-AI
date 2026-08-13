@@ -2,28 +2,26 @@ const { GoogleGenAI } = require('@google/genai');
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_KEY });
 const { Client, GatewayIntentBits, AttachmentBuilder } = require('discord.js');
 const http = require('http');
-const { createCanvas } = require('@napi-rs/canvas');
+const PImage = require('pureimage');
+const stream = require('stream');
 
 const PORT = process.env.PORT || 10000;
 const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
-    res.end('Discord AI Bot is running on Render! 🚀');
+    res.end('Bot is active');
 });
-server.listen(PORT, () => {
-    console.log(`🌐 Web Server running on port ${PORT}`);
-});
+server.listen(PORT);
 
 const client = new Client({
     intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent
+        GatewayIntentBitsGuilds,
+        GatewayIntentBitsGuildMessages,
+        GatewayIntentBitsMessageContent
     ]
 });
-const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 
 function splitMessage(text, maxLength = 1900) {
-    const chunks = [];
+    const chunks =;
     let currentChunk = "";
     const lines = text.split("\n");
     for (const line of lines) {
@@ -33,197 +31,76 @@ function splitMessage(text, maxLength = 1900) {
         }
         currentChunk += line + "\n";
     }
-    if (currentChunk.trim().length > 0) {
-        chunks.push(currentChunk.trim());
-    }
+    if (currentChunk.trim().length > 0) chunks.push(currentChunk.trim());
     return chunks;
 }
 
-function drawTableToImage(rawText) {
-    if (!rawText) return null;
-
-    const lines = rawText.split('\n')
-        .map(l => l ? l.trim() : "")
-        .filter(l => l.startsWith('|') && l.endsWith('|'));
-    
+async function drawTableToImage(rawText) {
+    const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.startsWith('|') && l.endsWith('|'));
     const tableData = lines.filter(l => !l.includes('---')).map(l => {
-        return l.split('|').map(cell => cell ? cell.trim() : "").filter((_, i, arr) => i > 0 && i < arr.length - 1);
+        return l.split('|').map(cell => cell.trim()).filter((_, i, arr) => i > 0 && i < arr.length - 1);
     });
 
     if (tableData.length === 0) return null;
 
+    const colWidths =;
     const cellPadding = 15;
-    const lineHeight = 24;
-    const colWidths = [180, 250, 250];
+    const lineHeight = 25;
     const tableWidth = colWidths.reduce((a, b) => a + b, 0);
-    
-    const rowHeights = tableData.map(row => {
-        let maxLines = 1;
-        colWidths.forEach((_, colIdx) => {
-            const cell = row && row[colIdx] ? String(row[colIdx]) : "";
-            const cleanCell = cell.replace(/<br\s*\/?>/gi, '\n');
-            const words = cleanCell.split(/[\s\n]+/).filter(w => w !== undefined && w !== null && w !== "");
-            let currentLine = "";
-            let textLines = 1;
-            
-            words.forEach(word => {
-                if (!word) return;
-                const strWord = String(word);
-                if ((currentLine + " " + strWord).length * 7 > colWidths[colIdx] - cellPadding * 2) {
-                    textLines++;
-                    currentLine = strWord;
-                } else {
-                    currentLine += " " + strWord;
-                }
-            });
-            const manualLines = cleanCell.split('\n').length;
-            const finalLines = Math.max(textLines, manualLines);
-            if (finalLines > maxLines) maxLines = finalLines;
-        });
-        return maxLines * lineHeight + cellPadding * 2;
-    });
-
+    const rowHeights = tableData.map(() => lineHeight + (cellPadding * 2));
     const tableHeight = rowHeights.reduce((a, b) => a + b, 0);
 
-    const canvas = createCanvas(tableWidth + 40, tableHeight + 40);
+    const canvas = PImage.make(tableWidth + 40, tableHeight + 40);
     const ctx = canvas.getContext('2d');
-
-    const safeFillText = (text, x, y) => {
-        if (text === undefined || text === null) return;
-        const targetStr = String(text).trim();
-        if (!targetStr) return;
-        ctx.fillText(targetStr, x, y);
-    };
 
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 1.5;
-    ctx.fillStyle = '#000000';
-    ctx.font = '14px sans-serif';
+    ctx.lineWidth = 1;
 
     let currentY = 20;
-
-    tableData.forEach((row, rowIdx) => {
-        const rHeight = rowHeights[rowIdx];
+    tableData.forEach((row, rIdx) => {
         let currentX = 20;
-
-        colWidths.forEach((_, colIdx) => {
-            const cWidth = colWidths[colIdx];
-            const cell = row && row[colIdx] ? String(row[colIdx]) : "";
-            
-            ctx.strokeRect(currentX, currentY, cWidth, rHeight);
-
-            if (rowIdx === 0) {
-                ctx.fillStyle = '#F2F2F2';
-                ctx.fillRect(currentX + 1, currentY + 1, cWidth - 2, rHeight - 2);
-                ctx.fillStyle = '#000000';
-                ctx.font = 'bold 14px sans-serif';
-            } else {
-                ctx.fillStyle = '#000000';
-                ctx.font = '14px sans-serif';
-            }
-
-            const cleanCell = cell.replace(/<br\s*\/?>/gi, '\n');
-            const linesToDraw = cleanCell.split('\n');
-            let textY = currentY + cellPadding + 12;
-
-            linesToDraw.forEach(lineText => {
-                if (!lineText) return;
-                const words = lineText.split(' ').filter(w => w !== undefined && w !== null && w !== "");
-                let textLine = "";
-                
-                words.forEach(word => {
-                    if (!word) return;
-                    const strWord = String(word);
-                    if ((textLine + " " + strWord).length * 7 > cWidth - cellPadding * 2) {
-                        safeFillText(textLine, currentX + cellPadding, textY);
-                        textY += lineHeight;
-                        textLine = strWord;
-                    } else {
-                        textLine += " " + strWord;
-                    }
-                });
-                if (textLine) {
-                    safeFillText(textLine, currentX + cellPadding, textY);
-                    textY += lineHeight;
-                }
-            });
-
-            currentX += cWidth;
+        row.forEach((cell, cIdx) => {
+            ctx.strokeRect(currentX, currentY, colWidths[cIdx], rowHeights[rIdx]);
+            ctx.fillStyle = '#000000';
+            ctx.fillText(String(cell || ""), currentX + cellPadding, currentY + cellPadding + 15);
+            currentX += colWidths[cIdx];
         });
-        currentY += rHeight;
+        currentY += rowHeights[rIdx];
     });
 
-    return canvas.toBuffer();
+    const passThrough = new stream.PassThrough();
+    await PImage.encodePNGToStream(canvas, passThrough);
+    const buffers =;
+    for await (const chunk of passThrough) buffers.push(chunk);
+    return Buffer.concat(buffers);
 }
 
-async function queryPuterAI(prompt) {
-    if (!process.env.GEMINI_KEY) {
-        throw new Error("Missing auth token (GEMINI_KEY)!");
-    }
-    try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-3.6-flash',
-            contents: prompt,
-        });
-        let rawText = response.text;
-        if (rawText) {
-            rawText = rawText.replace(/\$\$([^\$]+)\$\$/g, '```math\n\$1\n```');
-            rawText = rawText.replace(/\$([^\$]+)\$/g, '`$1`');
-            return rawText;
-        }
-        return "Error connecting to AI";
-    } catch (err) {
-        throw err;
-    }
+async function queryAI(prompt) {
+    const response = await ai.models.generateContent({ model: 'gemini-3.6-flash', contents: prompt });
+    return response.text;
 }
 
-client.once('ready', () => {
-    console.log(`🤖 SUCCESS! Bot: ${client.user.username}`);
-});
-
-client.on('messageCreate', async (message) => {
-    if (message.author.bot) return;
-    if (!message.mentions.has(client.user)) return;
-
+client.on('messageCreate', async (msg) => {
+    if (msg.author.bot || !msg.mentions.has(client.user)) return;
     try {
-        await message.channel.sendTyping();
-        const mentionRegex = new RegExp(`<@!?${client.user.id}>`);
-        const prompt = message.content.replace(mentionRegex, '').trim();
+        await msg.channel.sendTyping();
+        const prompt = msg.content.replace(/<@!?\d+>/, '').trim();
+        const aiText = await queryAI(prompt);
 
-        if (!prompt) {
-            return message.channel.send(`<@${message.author.id}> You must tag me before a prompt.`);
-        }
-
-        const aiResponse = await queryPuterAI(prompt);
-
-        if (aiResponse.includes('|') && aiResponse.split('\n').filter(l => l.trim().startsWith('|')).length > 1) {
-            const imageBuffer = drawTableToImage(aiResponse);
-            
-            if (imageBuffer) {
-                const attachment = new AttachmentBuilder(imageBuffer, { name: 'table_result.png' });
-                return await message.channel.send({
-                    content: `<@${message.author.id}> Here is the requested data table generated as a black and white image:`,
-                    files: [attachment]
-                });
+        if (aiText.includes('|')) {
+            const img = await drawTableToImage(aiText);
+            if (img) {
+                return msg.reply({ files: [new AttachmentBuilder(img, { name: 'tablepng' })] });
             }
         }
 
-        const messageChunks = splitMessage(aiResponse);
-        for (let i = 0; i < messageChunks.length; i++) {
-            if (i === 0) {
-                await message.channel.send(`<@${message.author.id}> ${messageChunks[i]}`);
-            } else {
-                await message.channel.send(messageChunks[i]);
-            }
-        }
-
-    } catch (error) {
-        console.error("Error Message:", error.message);
-        await message.channel.send(`<@${message.author.id}> System Error: \`${error.message}\``);
+        const chunks = splitMessage(aiText);
+        for (const chunk of chunks) await msg.reply(chunk);
+    } catch (e) {
+        msg.reply(`Error: ${e.message}`);
     }
 });
 
-client.login(DISCORD_TOKEN);
+client.login(process.env.DISCORD_TOKEN);
