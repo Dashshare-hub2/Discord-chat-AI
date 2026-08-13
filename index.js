@@ -48,13 +48,12 @@ function downloadFont(url, dest) {
     });
 }
 
-let isFontLoaded = false;
+let loadedFont = null;
 async function initFont() {
     try {
         await downloadFont(FONT_URL, FONT_PATH);
-        const font = PImage.registerFont(FONT_PATH, 'CustomFont');
-        font.loadSync();
-        isFontLoaded = true;
+        loadedFont = PImage.registerFont(FONT_PATH, 'CustomFont');
+        loadedFont.loadSync();
         console.log('Font loaded successfully into PureImage.');
     } catch (err) {
         console.error('Failed to initialize font:', err.message);
@@ -84,6 +83,7 @@ function splitMessage(text, maxLength = 1900) {
     if (currentChunk.trim().length > 0) chunks.push(currentChunk.trim());
     return chunks;
 }
+
 
 async function drawTableToImage(rawText) {
     const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.startsWith('|') && l.endsWith('|'));
@@ -116,8 +116,9 @@ async function drawTableToImage(rawText) {
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    if (isFontLoaded) {
-        ctx.setFont('CustomFont', 14);
+
+    if (loadedFont) {
+        ctx.font = "14pt 'CustomFont'";
     }
 
     let currentY = 20;
@@ -150,6 +151,7 @@ async function drawTableToImage(rawText) {
     for await (const chunk of passThrough) buffers.push(chunk);
     return Buffer.concat(buffers);
 }
+
 
 async function queryAI(prompt) {
     const response = await ai.models.generateContent({ 
