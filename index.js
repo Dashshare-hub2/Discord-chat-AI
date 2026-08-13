@@ -39,7 +39,7 @@ async function queryPuterAI(prompt) {
        });
         const raw = response.candidates[0].content.parts[0].text;
         if (raw) {
-            const newtext = raw.replace("$", "`");
+            const newtext = raw.replaceAll("$", "`");
             return newtext
             }
         
