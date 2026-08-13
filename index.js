@@ -43,11 +43,11 @@ function drawTableToImage(rawText) {
     if (!rawText) return null;
 
     const lines = rawText.split('\n')
-        .map(l => l.trim())
+        .map(l => l ? l.trim() : "")
         .filter(l => l.startsWith('|') && l.endsWith('|'));
     
     const tableData = lines.filter(l => !l.includes('---')).map(l => {
-        return l.split('|').map(cell => cell.trim()).filter((_, i, arr) => i > 0 && i < arr.length - 1);
+        return l.split('|').map(cell => cell ? cell.trim() : "").filter((_, i, arr) => i > 0 && i < arr.length - 1);
     });
 
     if (tableData.length === 0) return null;
@@ -60,13 +60,14 @@ function drawTableToImage(rawText) {
     const rowHeights = tableData.map(row => {
         let maxLines = 1;
         colWidths.forEach((_, colIdx) => {
-            const cell = row[colIdx] ? String(row[colIdx]) : "";
+            const cell = row && row[colIdx] ? String(row[colIdx]) : "";
             const cleanCell = cell.replace(/<br\s*\/?>/gi, '\n');
             const words = cleanCell.split(/[\s\n]+/).filter(w => w !== undefined && w !== null && w !== "");
             let currentLine = "";
             let textLines = 1;
             
             words.forEach(word => {
+                if (!word) return;
                 const strWord = String(word);
                 if ((currentLine + " " + strWord).length * 7 > colWidths[colIdx] - cellPadding * 2) {
                     textLines++;
@@ -87,6 +88,13 @@ function drawTableToImage(rawText) {
     const canvas = createCanvas(tableWidth + 40, tableHeight + 40);
     const ctx = canvas.getContext('2d');
 
+    const safeFillText = (text, x, y) => {
+        if (text === undefined || text === null) return;
+        const targetStr = String(text).trim();
+        if (!targetStr) return;
+        ctx.fillText(targetStr, x, y);
+    };
+
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -103,7 +111,7 @@ function drawTableToImage(rawText) {
 
         colWidths.forEach((_, colIdx) => {
             const cWidth = colWidths[colIdx];
-            const cell = row[colIdx] ? String(row[colIdx]) : "";
+            const cell = row && row[colIdx] ? String(row[colIdx]) : "";
             
             ctx.strokeRect(currentX, currentY, cWidth, rHeight);
 
@@ -127,17 +135,18 @@ function drawTableToImage(rawText) {
                 let textLine = "";
                 
                 words.forEach(word => {
+                    if (!word) return;
                     const strWord = String(word);
                     if ((textLine + " " + strWord).length * 7 > cWidth - cellPadding * 2) {
-                        ctx.fillText(String(textLine.trim()), currentX + cellPadding, textY);
+                        safeFillText(textLine, currentX + cellPadding, textY);
                         textY += lineHeight;
                         textLine = strWord;
                     } else {
                         textLine += " " + strWord;
                     }
                 });
-                if (textLine && textLine.trim()) {
-                    ctx.fillText(String(textLine.trim()), currentX + cellPadding, textY);
+                if (textLine) {
+                    safeFillText(textLine, currentX + cellPadding, textY);
                     textY += lineHeight;
                 }
             });
@@ -161,7 +170,7 @@ async function queryPuterAI(prompt) {
         });
         let rawText = response.text;
         if (rawText) {
-            rawText = rawText.replace(/\$\$([^\$]+)\$\$/g, '```math\n\$1\n```');
+            rawText = rawText.replace(/\$$([^\$]+)\$\$/g, '```math\n\$1\n```');
             rawText = rawText.replace(/\$([^\$]+)\$/g, '`$1`');
             return rawText;
         }
