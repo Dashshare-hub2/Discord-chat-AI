@@ -1,6 +1,6 @@
 const { GoogleGenAI } = require('@google/genai');
 
-const ai = new GoogleGenAI({ apikey: process.env.GEMINI_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_KEY });
 const { Client, GatewayIntentBits } = require('discord.js');
 const http = require('http');
 
