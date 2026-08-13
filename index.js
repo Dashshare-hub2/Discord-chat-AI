@@ -10,7 +10,6 @@ const https = require('https');
 
 const PORT = process.env.PORT || 10000;
 const FONT_PATH = path.join(__dirname, 'font.ttf');
-
 const FONT_URL = 'https://raw.githubusercontent.com/googlefonts/noto-fonts/main/hinted/ttf/NotoSans/NotoSans-Regular.ttf';
 
 const server = http.createServer((req, res) => {
@@ -84,7 +83,6 @@ function splitMessage(text, maxLength = 1900) {
     return chunks;
 }
 
-
 async function drawTableToImage(rawText) {
     const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.startsWith('|') && l.endsWith('|'));
     const tableData = lines.filter(l => !l.includes('---')).map(l => {
@@ -115,7 +113,6 @@ async function drawTableToImage(rawText) {
 
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
 
     if (loadedFont) {
         ctx.font = "14pt 'CustomFont'";
@@ -152,7 +149,6 @@ async function drawTableToImage(rawText) {
     return Buffer.concat(buffers);
 }
 
-
 async function queryAI(prompt) {
     const response = await ai.models.generateContent({ 
         model: 'gemini-3.6-flash', 
@@ -163,12 +159,18 @@ async function queryAI(prompt) {
 
 client.on('messageCreate', async (msg) => {
     if (msg.author.bot || !msg.mentions.has(client.user)) return;
+    
+    console.log(`Received command from ${msg.author.tag}: ${msg.content}`);
     try {
         await msg.channel.sendTyping();
         const prompt = msg.content.replace(/<@!?\d+>/, '').trim();
+        
+        console.log(`Querying Gemini API...`);
         const aiText = await queryAI(prompt);
+        console.log(`Gemini response received.`);
 
         if (aiText.includes('|')) {
+            console.log(`Table detected. Generating PNG image...`);
             const img = await drawTableToImage(aiText);
             if (img) {
                 return msg.reply({ files: [new AttachmentBuilder(img, { name: 'table.png' })] });
@@ -178,8 +180,13 @@ client.on('messageCreate', async (msg) => {
         const chunks = splitMessage(aiText);
         for (const chunk of chunks) await msg.reply(chunk);
     } catch (e) {
+        console.error(`Error processing request:`, e);
         msg.reply(`Error: ${e.message}`);
     }
+});
+
+client.once('ready', () => {
+    console.log(`Logged in as ${client.user.tag}!`);
 });
 
 client.login(process.env.DISCORD_TOKEN);
