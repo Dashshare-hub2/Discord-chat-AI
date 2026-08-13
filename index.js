@@ -25,7 +25,7 @@ const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 
 
 async function queryPuterAI(prompt) {
-    if (!PUTER_AUTH_TOKEN) {
+    if (!GEMINI_KEY) {
         throw new Error("Missing auth token!");
     }
 
