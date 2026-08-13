@@ -1,5 +1,4 @@
 const { GoogleGenAI } = require('@google/genai');
-
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_KEY });
 const { Client, GatewayIntentBits } = require('discord.js');
 const http = require('http');
@@ -7,10 +6,10 @@ const http = require('http');
 const PORT = process.env.PORT || 10000;
 const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
-    res.end('Bot Discord AI runningg on Render! 🚀');
+    res.end('Bot Discord AI running on Render! 🚀');
 });
 server.listen(PORT, () => {
-    console.log(`🌐 Bot is ready ${PORT}`);
+    console.log(`🌐 Web Server running on port ${PORT}`);
 });
 
 const client = new Client({
@@ -20,41 +19,56 @@ const client = new Client({
         GatewayIntentBits.MessageContent
     ]
 });
-
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 
+function splitMessage(text, maxLength = 1900) {
+    const chunks = [];
+    let currentChunk = "";
+    const lines = text.split("\n");
+
+    for (const line of lines) {
+        if ((currentChunk + line).length > maxLength) {
+            chunks.push(currentChunk.trim());
+            currentChunk = "";
+        }
+        currentChunk += line + "\n";
+    }
+
+    if (currentChunk.trim().length > 0) {
+        chunks.push(currentChunk.trim());
+    }
+    return chunks;
+}
 
 async function queryPuterAI(prompt) {
     if (!process.env.GEMINI_KEY) {
-        throw new Error("Missing auth token!");
+        throw new Error("Missing auth token (GEMINI_KEY)!");
     }
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 20000);
-
-       try {
+    try {
         const response = await ai.models.generateContent({
-         model: 'gemini-3.6-flash',
-        contents: prompt,
-       });
-        const raw = response.candidates[0].content.parts[0].text;
-        if (raw) {
-            const newtext = raw.replaceAll("$", "`");
-            return newtext
-            }
-        
+            model: 'gemini-3.6-flash',
+            contents: prompt,
+        });
+
+        let rawText = response.text;
+
+        if (rawText) {
+            rawText = rawText.replace(/\$\$([^\$]+)\$\$/g, '```math\n\$1\n```');
+            rawText = rawText.replace(/\$([^\$]+)\$/g, '`$1`');
+
+            return rawText;
+        }
+
         return "Error to Connecting to AI";
     } catch (err) {
-        clearTimeout(timeoutId);
-        if (err.name === 'AbortError') {
-            throw new Error("AI Timeout.");
-        }
         throw err;
     }
 }
 
+
 client.once('ready', () => {
-    console.log(`🤖 SUCCESS! Bot Online with name: ${client.user.username}`);
+    console.log(`🤖 SUCCESS! Bot: ${client.user.username}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -68,15 +82,24 @@ client.on('messageCreate', async (message) => {
         const prompt = message.content.replace(mentionRegex, '').trim();
 
         if (!prompt) {
-            return message.channel.send(`<@${message.author.id}> You must tag me after question!`);
+            return message.channel.send(`<@${message.author.id}> You must tag me before prompt`);
         }
 
         const aiResponse = await queryPuterAI(prompt);
-        await message.channel.send(`<@${message.author.id}> ${aiResponse}`);
+
+        const messageChunks = splitMessage(aiResponse);
+
+        for (let i = 0; i < messageChunks.length; i++) {
+            if (i === 0) {
+                await message.channel.send(`<@${message.author.id}> ${messageChunks[i]}`);
+            } else {
+                await message.channel.send(messageChunks[i]);
+            }
+        }
 
     } catch (error) {
-        console.error("Lỗi xử lý tin nhắn:", error.message);
-        await message.channel.send(`<@${message.author.id}> Error: \`${error.message}\``);
+        console.error("Error Message:", error.message);
+        await message.channel.send(`<@${message.author.id}> System Error: \`${error.message}\``);
     }
 });
 
