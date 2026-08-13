@@ -9,8 +9,9 @@ const path = require('path');
 const https = require('https');
 
 const PORT = process.env.PORT || 10000;
-const FONT_PATH = path.join(__dirname, 'Roboto-Regular.ttf');
-const FONT_URL = 'https://github.com/google/fonts/raw/main/ofl/roboto/Roboto-Regular.ttf';
+const FONT_PATH = path.join(__dirname, 'font.ttf');
+
+const FONT_URL = 'https://raw.githubusercontent.com/googlefonts/noto-fonts/main/hinted/ttf/NotoSans/NotoSans-Regular.ttf';
 
 const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
@@ -24,11 +25,14 @@ server.listen(PORT, '0.0.0.0', () => {
 function downloadFont(url, dest) {
     return new Promise((resolve, reject) => {
         if (fs.existsSync(dest)) return resolve();
-        console.log('Downloading font for PureImage...');
+        console.log('Downloading OpenType-compatible TrueType font...');
         const file = fs.createWriteStream(dest);
         https.get(url, (response) => {
             if (response.statusCode === 302 || response.statusCode === 301) {
                 return downloadFont(response.headers.location, dest).then(resolve).catch(reject);
+            }
+            if (response.statusCode !== 200) {
+                return reject(new Error(`Failed to download font. Status code: ${response.statusCode}`));
             }
             response.pipe(file);
             file.on('finish', () => {
@@ -51,7 +55,7 @@ async function initFont() {
         const font = PImage.registerFont(FONT_PATH, 'CustomFont');
         font.loadSync();
         isFontLoaded = true;
-        console.log('Font loaded into PureImage.');
+        console.log('Font loaded successfully into PureImage.');
     } catch (err) {
         console.error('Failed to initialize font:', err.message);
     }
