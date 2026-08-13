@@ -32,11 +32,11 @@ async function queryPuterAI(prompt) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 20000);
 
-    try {
+       try {
         const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-2.0-flash',
     contents: prompt,
-  });
+       });
 
         clearTimeout(timeoutId);
 
