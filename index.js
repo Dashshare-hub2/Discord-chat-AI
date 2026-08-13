@@ -44,9 +44,8 @@ async function queryPuterAI(prompt) {
             const errorText = await response.text();
             throw new Error(`AI API Error: ${response.status} - ${errorText}`);
         }
-        const json =  response.text;
  
-        if (json.candidates[0].content.parts[0].text) {
+        if (response.candidates[0].content.parts[0].text) {
             return json.candidates[0].content.parts[0].text
             }
         
