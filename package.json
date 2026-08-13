@@ -9,6 +9,6 @@
   "dependencies": {
     "discord.js": "^14.15.3",
     "@google/genai": "^2.16.0",
-    "@napi-rs/canvas": "^0.1.6"
+    "pureimage": "^0.4.18"
   }
 }
