@@ -40,6 +40,8 @@ function splitMessage(text, maxLength = 1900) {
 }
 
 function drawTableToImage(rawText) {
+    if (!rawText) return null;
+
     const lines = rawText.split('\n')
         .map(l => l.trim())
         .filter(l => l.startsWith('|') && l.endsWith('|'));
@@ -53,18 +55,22 @@ function drawTableToImage(rawText) {
     const cellPadding = 15;
     const lineHeight = 24;
     
+
     const colWidths = [180, 250, 250];
     const tableWidth = colWidths.reduce((a, b) => a + b, 0);
     
     const rowHeights = tableData.map(row => {
         let maxLines = 1;
-        row.forEach((cell, colIdx) => {
+        colWidths.forEach((_, colIdx) => {
+    
+            const cell = row[colIdx] ? String(row[colIdx]) : "";
             const cleanCell = cell.replace(/<br\s*\/?>/gi, '\n');
             const words = cleanCell.split(/[\s\n]+/);
             let currentLine = "";
             let textLines = 1;
             
             words.forEach(word => {
+                if (!word) return;
                 if ((currentLine + " " + word).length * 7 > colWidths[colIdx] - cellPadding * 2) {
                     textLines++;
                     currentLine = word;
@@ -98,8 +104,10 @@ function drawTableToImage(rawText) {
         const rHeight = rowHeights[rowIdx];
         let currentX = 20;
 
-        row.forEach((cell, colIdx) => {
+        colWidths.forEach((_, colIdx) => {
             const cWidth = colWidths[colIdx];
+    
+            const cell = row[colIdx] ? String(row[colIdx]) : "";
             
             ctx.strokeRect(currentX, currentY, cWidth, rHeight);
 
@@ -109,6 +117,7 @@ function drawTableToImage(rawText) {
                 ctx.fillStyle = '#000000';
                 ctx.font = 'bold 14px Arial';
             } else {
+                ctx.fillStyle = '#000000';
                 ctx.font = '14px Arial';
             }
 
@@ -117,20 +126,24 @@ function drawTableToImage(rawText) {
             let textY = currentY + cellPadding + 12;
 
             linesToDraw.forEach(lineText => {
+                if (!lineText) return;
                 const words = lineText.split(' ');
                 let textLine = "";
                 
                 words.forEach(word => {
+                    if (!word) return;
                     if ((textLine + " " + word).length * 7 > cWidth - cellPadding * 2) {
-                        ctx.fillText(textLine.trim(), currentX + cellPadding, textY);
+                        ctx.fillText(String(textLine.trim()), currentX + cellPadding, textY);
                         textY += lineHeight;
                         textLine = word;
                     } else {
                         textLine += " " + word;
                     }
                 });
-                ctx.fillText(textLine.trim(), currentX + cellPadding, textY);
-                textY += lineHeight;
+                if (textLine.trim()) {
+                    ctx.fillText(String(textLine.trim()), currentX + cellPadding, textY);
+                    textY += lineHeight;
+                }
             });
 
             currentX += cWidth;
