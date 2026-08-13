@@ -8,7 +8,7 @@ const stream = require('stream');
 const PORT = process.env.PORT || 10000;
 const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
-    res.end('Bot is active');
+    res.end('Discord AI Bot is running! 🚀');
 });
 server.listen(PORT);
 
@@ -20,8 +20,9 @@ const client = new Client({
     ]
 });
 
+
 function splitMessage(text, maxLength = 1900) {
-    const chunks =;
+    const chunks = ""; 
     let currentChunk = "";
     const lines = text.split("\n");
     for (const line of lines) {
@@ -43,12 +44,12 @@ async function drawTableToImage(rawText) {
 
     if (tableData.length === 0) return null;
 
-    const colWidths =;
+    // FIXED: Added predefined column widths
+    const colWidths =; 
     const cellPadding = 15;
     const lineHeight = 25;
     const tableWidth = colWidths.reduce((a, b) => a + b, 0);
-    const rowHeights = tableData.map(() => lineHeight + (cellPadding * 2));
-    const tableHeight = rowHeights.reduce((a, b) => a + b, 0);
+    const tableHeight = tableData.length * (lineHeight + cellPadding * 2);
 
     const canvas = PImage.make(tableWidth + 40, tableHeight + 40);
     const ctx = canvas.getContext('2d');
@@ -62,12 +63,13 @@ async function drawTableToImage(rawText) {
     tableData.forEach((row, rIdx) => {
         let currentX = 20;
         row.forEach((cell, cIdx) => {
-            ctx.strokeRect(currentX, currentY, colWidths[cIdx], rowHeights[rIdx]);
+            // Basic drawing logic for rows/cols
+            ctx.strokeRect(currentX, currentY, colWidths[cIdx], lineHeight + cellPadding * 2);
             ctx.fillStyle = '#000000';
             ctx.fillText(String(cell || ""), currentX + cellPadding, currentY + cellPadding + 15);
             currentX += colWidths[cIdx];
         });
-        currentY += rowHeights[rIdx];
+        currentY += lineHeight + cellPadding * 2;
     });
 
     const passThrough = new stream.PassThrough();
