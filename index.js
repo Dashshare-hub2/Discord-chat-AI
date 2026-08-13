@@ -2,7 +2,7 @@ const { GoogleGenAI } = require('@google/genai');
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_KEY });
 const { Client, GatewayIntentBits, AttachmentBuilder } = require('discord.js');
 const http = require('http');
-const { createCanvas } = require('canvas');
+const { createCanvas } = require('@napi-rs/canvas');
 
 const PORT = process.env.PORT || 10000;
 const server = http.createServer((req, res) => {
