@@ -1,6 +1,6 @@
 const { GoogleGenAI } = require('@google/genai');
 
-const ai = new GoogleGenAI();
+const ai = new GoogleGenAI({ apikey: process.env.GEMINI_KEY });
 const { Client, GatewayIntentBits } = require('discord.js');
 const http = require('http');
 
@@ -22,7 +22,6 @@ const client = new Client({
 });
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
-const PUTER_AUTH_TOKEN = process.env.PUTER_AUTH_TOKEN; 
 
 
 async function queryPuterAI(prompt) {
