@@ -37,9 +37,10 @@ async function queryPuterAI(prompt) {
          model: 'gemini-3.6-flash',
         contents: prompt,
        });
- 
-        if (response.candidates[0].content.parts[0].text) {
-            return response.candidates[0].content.parts[0].text
+        const raw = response.candidates[0].content.parts[0].text;
+        if (raw) {
+            const newtext = raw.replace("$", "`");
+            return newtext
             }
         
         return "Error to Connecting to AI";
