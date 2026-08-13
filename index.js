@@ -34,22 +34,15 @@ async function queryPuterAI(prompt) {
 
        try {
         const response = await ai.models.generateContent({
-    model: 'gemini-3.6-flash',
-    contents: prompt,
+         model: 'gemini-3.6-flash',
+        contents: prompt,
        });
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`AI API Error: ${response.status} - ${errorText}`);
-        }
  
         if (response.candidates[0].content.parts[0].text) {
-            return json.candidates[0].content.parts[0].text
+            return response.candidates[0].content.parts[0].text
             }
         
-        return "Don't get the text from AI.";
+        return "Error to Connecting to AI";
     } catch (err) {
         clearTimeout(timeoutId);
         if (err.name === 'AbortError') {
