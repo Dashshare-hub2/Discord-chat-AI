@@ -111,11 +111,11 @@ client.on('messageCreate', async (msg) => {
         const prompt = msg.content.replace(/<@!?\d+>/, '').trim();
 
         console.log(`Querying Gemini API...`);
-        const aiText = await queryAI(prompt);
+        const aires = await queryAI(prompt);
         console.log(`Gemini response received successfully.`);
 
         console.log(`Sending response...`);
-        const chunks = splitMessage(aiText);
+        const chunks = splitMessage(aires);
         for (const chunk of chunks) {
             await msg.reply(chunk);
         }
