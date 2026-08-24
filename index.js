@@ -149,7 +149,7 @@ client.on('messageCreate', async (msg) => {
     if (msg.author.bot || !msg.mentions.has(client.user)) return;
     try {
         await msg.channel.sendTyping();
-        const prompt = msga.content.replace(/<@!?\d+>/, '').trim();
+        const prompt = msg.content.replace(/<@!?\d+>/, '').trim();
 
         console.log(`Querying Gemini API...`);
         const aires = await queryAI(prompt);
