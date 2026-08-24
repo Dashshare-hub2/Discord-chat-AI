@@ -147,12 +147,26 @@ async function DirectMessage(msga, usere) {
 
 client.on('messageCreate', async (msg) => {
     if (msg.author.bot || !msg.mentions.has(client.user)) return;
+    try {
+        await msg.channel.sendTyping();
+        const prompt = msga.content.replace(/<@!?\d+>/, '').trim();
 
-    if (!message.guild) {
-        const user = await client.users.fetch(client.user);
-        return DirectMessage(msg, user);
-    } else {
-        return ServerMessage(msg);
+        console.log(`Querying Gemini API...`);
+        const aires = await queryAI(prompt);
+        console.log(`Gemini response received successfully.`);
+
+        console.log(`Sending response...`);
+        const chunks = splitMessage(aires);
+        for (const chunk of chunks) {
+            if (message.channel.type === ChannelType.DM) {
+            await msg.author.send(chunk);
+            } else {
+            msg.reply(chunk)
+            }
+        }
+    } catch (e) {
+        console.error(`Error processing message:`, e);
+        msg.reply(`Error: ${e.message}`);
     }
 });
 
