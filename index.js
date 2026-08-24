@@ -105,55 +105,56 @@ async function queryAI(prompt) {
     }
 }
 
+async function ServerMessage(msgb) {
+    try {
+        await msgb.channel.sendTyping();
+        const prompt = msgb.content.replace(/<@!?\d+>/, '').trim();
+
+        console.log(`Querying Gemini API...`);
+        const aires = await queryAI(prompt);
+        console.log(`Gemini response received successfully.`);
+
+        console.log(`Sending response...`);
+        const chunks = splitMessage(aires);
+        for (const chunk of chunks) {
+            await msg.reply(chunk);
+        }
+    } catch (e) {
+        console.error(`Error processing message:`, e);
+        msgb.reply(`Error: ${e.message}`);
+    }
+}
+
+async function DirectMessage(msga, usere) {
+    try {
+        await msga.channel.sendTyping();
+        const prompt = msga.content.replace(/<@!?\d+>/, '').trim();
+
+        console.log(`Querying Gemini API...`);
+        const aires = await queryAI(prompt);
+        console.log(`Gemini response received successfully.`);
+
+        console.log(`Sending response...`);
+        const chunks = splitMessage(aires);
+        for (const chunk of chunks) {
+            await usere.send(chunk)
+        }
+    } catch (e) {
+        console.error(`Error processing message:`, e);
+        msga.reply(`Error: ${e.message}`);
+    }
+}
+
 client.on('messageCreate', async (msg) => {
     if (msg.author.bot || !msg.mentions.has(client.user)) return;
 
     if (!message.guild) {
-        return DirectMessage(msg);
+        const user = await client.users.fetch(client.user);
+        return DirectMessage(msg, user);
     } else {
         return ServerMessage(msg);
     }
 });
-
-async function ServerMessage(msg) {
-    try {
-        await msg.channel.sendTyping();
-        const prompt = msg.content.replace(/<@!?\d+>/, '').trim();
-
-        console.log(`Querying Gemini API...`);
-        const aires = await queryAI(prompt);
-        console.log(`Gemini response received successfully.`);
-
-        console.log(`Sending response...`);
-        const chunks = splitMessage(aires);
-        for (const chunk of chunks) {
-            await msg.reply(chunk);
-        }
-    } catch (e) {
-        console.error(`Error processing message:`, e);
-        msg.reply(`Error: ${e.message}`);
-    }
-}
-
-async function DirectMessage(msg) {
-    try {
-        await msg.channel.sendTyping();
-        const prompt = msg.content.replace(/<@!?\d+>/, '').trim();
-
-        console.log(`Querying Gemini API...`);
-        const aires = await queryAI(prompt);
-        console.log(`Gemini response received successfully.`);
-
-        console.log(`Sending response...`);
-        const chunks = splitMessage(aires);
-        for (const chunk of chunks) {
-            await msg.reply(chunk);
-        }
-    } catch (e) {
-        console.error(`Error processing message:`, e);
-        msg.reply(`Error: ${e.message}`);
-    }
-}
 
 client.once('ready', () => {
     console.log(`Logged in as ${client.user.tag}!`);
