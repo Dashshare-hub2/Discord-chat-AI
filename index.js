@@ -85,7 +85,7 @@ function startOverloadCountdown(seconds) {
 async function queryAI(prompt) {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-3.6-flash',
+            model: 'gemini-3.8-flash',
             contents: prompt,
             config: {
                 systemInstruction: "Do not use LaTeX or dollar signs ($) for formatting math formulas. Use backticks (`) for inline code/math formulas instead."
