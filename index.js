@@ -20,7 +20,6 @@ const client = new Client({
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.DirectMessages
-        
     ],
     partials: [Partials.Channel, Partials.Message]
 });
@@ -85,7 +84,7 @@ function startOverloadCountdown(seconds) {
 async function queryAI(prompt) {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-3.8-flash',
+            model: 'gemini-2.5-flash',
             contents: prompt,
             config: {
                 systemInstruction: "Do not use LaTeX or dollar signs ($) for formatting math formulas. Use backticks (`) for inline code/math formulas instead."
@@ -109,7 +108,7 @@ client.on('messageCreate', async (msg) => {
     if (msg.author.bot || !msg.mentions.has(client.user)) return;
     try {
         await msg.channel.sendTyping();
-        const prompt = msg.content.replace(/<@!?\d+>/, '').trim();
+        const prompt = msg.content.replace(/<@!?\d+>/g, '').trim();
 
         console.log(`Querying Gemini API...`);
         const aires = await queryAI(prompt);
@@ -119,14 +118,14 @@ client.on('messageCreate', async (msg) => {
         const chunks = splitMessage(aires);
         for (const chunk of chunks) {
             if (msg.channel.type === ChannelType.DM) {
-            await msg.author.send(chunk);
+                await msg.channel.send(chunk);
             } else {
-            msg.reply(chunk)
+                await msg.reply(chunk);
             }
         }
     } catch (e) {
         console.error(`Error processing message:`, e);
-        msg.reply(`Error: ${e.message}`);
+        await msg.reply(`Error: ${e.message}`);
     }
 });
 
